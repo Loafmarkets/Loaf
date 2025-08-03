@@ -1,0 +1,1870 @@
+import React, { useState, useRef, useEffect } from 'react';
+import styled from 'styled-components';
+import { BiCalendar, BiCheck, BiInfoCircle, BiChevronDown, BiX, BiPencil, BiCreditCard, BiWallet, BiCoin } from 'react-icons/bi';
+import { FaBitcoin } from 'react-icons/fa';
+import PaymentPopup from '../../components/PaymentPopup';
+
+// Styled Components
+const OwnerBookingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+`;
+
+const ExplanationSection = styled.div`
+  background: linear-gradient(to right, #111, #1a1a1a);
+  border-radius: 12px;
+  padding: 2rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+`;
+
+const ExplanationTitle = styled.h2`
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const ExplanationText = styled.p`
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+`;
+
+const BenefitsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+`;
+
+const BenefitCard = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  border-left: 2px solid rgba(212, 175, 55, 0.5);
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.08);
+    transform: translateY(-2px);
+  }
+`;
+
+const BenefitTitle = styled.h3`
+  font-size: 1.2rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const BenefitText = styled.p`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+`;
+
+const BookingSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  background: #111;
+  border-radius: 12px;
+  padding: 2rem;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.05);
+`;
+
+const BookingTitle = styled.h2`
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #fff;
+`;
+
+const BookingGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CalendarContainer = styled.div`
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+`;
+
+const CalendarHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const ResidenceCalendarTitle = styled.h2`
+  font-size: 1.2rem;
+  color: #d4af37;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 0.75rem;
+`;
+
+const CalendarAvailabilityMessage = styled.div`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  text-align: center;
+  line-height: 1.4;
+`;
+
+const CalendarTitle = styled.h3`
+  font-size: 1.2rem;
+  color: #fff;
+`;
+
+const CalendarNavigation = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+`;
+
+const DateSelectorWrapper = styled.div`
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+`;
+
+const DateSelectorButton = styled.button`
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  &:hover {
+    color: #e5c158;
+  }
+`;
+
+const DateSelectorDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #d4af37;
+  border-radius: 6px;
+  width: 240px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: ${props => props.isOpen ? 'block' : 'none'};
+`;
+
+const DropdownSection = styled.div`
+  padding: 0.75rem;
+`;
+
+const DropdownTitle = styled.h4`
+  color: #d4af37;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+`;
+
+const MonthGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+`;
+
+const YearSelector = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+`;
+
+const YearButton = styled.button`
+  background: none;
+  border: none;
+  color: #d4af37;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  &:hover {
+    color: #e5c158;
+  }
+`;
+
+const YearDisplay = styled.span`
+  color: #fff;
+  font-size: 1rem;
+`;
+
+const MonthButton = styled.button`
+  background: ${props => props.isSelected ? 'rgba(212, 175, 55, 0.2)' : 'none'};
+  border: 1px solid ${props => props.isSelected ? '#d4af37' : 'rgba(255, 255, 255, 0.1)'};
+  color: ${props => props.isSelected ? '#d4af37' : '#fff'};
+  border-radius: 4px;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  &:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+`;
+
+const NavButton = styled.button`
+  background: rgba(212, 175, 55, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: #d4af37;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.3);
+  }
+`;
+
+const JumpButton = styled.button`
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 4px;
+  color: #d4af37;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+  
+  &:active {
+    transform: translateY(1px);
+  }
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+`;
+
+const AddDateRangeButton = styled.button`
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 4px;
+  color: #d4af37;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: rgba(212, 175, 55, 0.6);
+  }
+  
+  &:active {
+    transform: translateY(1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const ConfirmButton = styled(AddDateRangeButton)`
+  background: rgba(212, 175, 55, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  font-weight: 600;
+`;
+
+const DateRangesList = styled.div`
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const DateRangeItem = styled.div`
+  position: relative;
+  background: ${props => props.color ? `rgba(17, 17, 17, 0.6)` : 'rgba(17, 17, 17, 0.6)'};
+  border-radius: 4px;
+  padding: 1rem;
+  border-left: 4px solid ${props => props.color ? props.color.border : 'transparent'};
+  margin-bottom: 1rem;
+`;
+
+const SavedRangeDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+`;
+
+const RemoveButton = styled.button`
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  
+  &:hover {
+    color: #fff;
+  }
+`;
+
+const EditButton = styled(RemoveButton)`
+  color: rgba(212, 175, 55, 0.6);
+  margin-right: 0.5rem;
+  
+  &:hover {
+    color: #d4af37;
+  }
+`;
+
+
+
+
+const CalendarGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+`;
+
+const DayHeader = styled.div`
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.5rem 0;
+`;
+
+const DayCell = styled.div`
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${props => 
+    props.isSelected ? 'rgba(212, 175, 55, 0.4)' : 
+    props.isInSelectedRange ? 'rgba(212, 175, 55, 0.3)' :
+    props.savedRangeColor ? props.savedRangeColor.bg :
+    props.isInHoverRange ? 'rgba(212, 175, 55, 0.2)' : 
+    'transparent'};
+  border-radius: 4px;
+  cursor: ${props => props.isAvailable && !props.savedRangeColor ? 'pointer' : 'default'};
+  opacity: ${props => props.isCurrentMonth ? 1 : 0.3};
+  color: ${props => props.isAvailable ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
+  border: 1px solid ${props => 
+    props.isSelected || props.isInSelectedRange ? 'rgba(212, 175, 55, 0.6)' : 
+    props.savedRangeColor ? props.savedRangeColor.border :
+    props.isAvailable ? 'rgba(212, 175, 55, 0.3)' : 
+    'transparent'};
+  font-weight: ${props => (props.isSelected || props.isInHoverRange || props.isInSelectedRange || props.savedRangeColor) ? '500' : props.isAvailable ? '400' : 'normal'};
+  transition: background 0.15s ease, border-color 0.15s ease;
+  
+  &:hover {
+    background: ${props => 
+      props.isSelected ? 'rgba(212, 175, 55, 0.6)' : 
+      props.isInSelectedRange ? 'rgba(212, 175, 55, 0.4)' :
+      props.savedRangeColor ? props.savedRangeColor.bg :
+      props.isAvailable && !props.savedRangeColor ? 'rgba(212, 175, 55, 0.15)' : 
+      'transparent'};
+    opacity: ${props => props.isCurrentMonth ? (props.savedRangeColor ? 0.8 : 1) : 0.3};
+  }
+  
+  position: relative;
+  
+  &::after {
+    content: ${props => props.reservationNumber ? `'${props.reservationNumber}'` : '""'};
+    position: absolute;
+    top: 1px;
+    right: 2px;
+    font-size: 8px;
+    font-weight: bold;
+    color: ${props => props.savedRangeColor ? props.savedRangeColor.border : 'transparent'};
+  }
+`;
+
+const BookingDetailsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`;
+
+const BookingFormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const BookingLabel = styled.label`
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+`;
+
+const BookingInput = styled.input`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.75rem;
+  color: #fff;
+  font-size: 1rem;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const BookingSelect = styled.select`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.75rem;
+  color: #fff;
+  font-size: 1rem;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const DateRangeDisplay = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const DateBox = styled.div`
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+`;
+
+const DateLabel = styled.div`
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.25rem;
+`;
+
+const DateValue = styled.div`
+  font-size: 1.1rem;
+  color: #fff;
+`;
+
+const PaymentSection = styled.div`
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+`;
+
+const PaymentTitle = styled.h3`
+  font-size: 1.2rem;
+  color: #fff;
+  margin-bottom: 1rem;
+`;
+
+const PaymentOptions = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const PaymentOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid ${props => props.isSelected ? 'rgba(212, 175, 55, 0.7)' : 'transparent'};
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.08);
+  }
+`;
+
+const RadioButton = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  ${props => props.isSelected && `
+    border-color: #d4af37;
+    
+    &:after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d4af37;
+    }
+  `}
+`;
+
+const PaymentOptionContent = styled.div`
+  flex: 1;
+`;
+
+const PaymentOptionTitle = styled.div`
+  font-size: 1rem;
+  color: #fff;
+`;
+
+const PaymentOptionDescription = styled.div`
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.25rem;
+`;
+
+const TooltipContainer = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  
+  &:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+`;
+
+const Tooltip = styled.div`
+  visibility: hidden;
+  position: absolute;
+  width: 250px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 10px;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  
+  &:after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+  }
+`;
+
+const BookingButton = styled.button`
+  background: ${props => props.disabled ? 'rgba(255, 255, 255, 0.1)' : 'linear-gradient(to right, #d4af37, #f2d35b)'};
+  border: none;
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  color: ${props => props.disabled ? '#fff' : '#000'};
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1.5rem;
+  
+  &:hover {
+    background: linear-gradient(to right, #f2d35b, #d4af37);
+    transform: translateY(-2px);
+  }
+`;
+
+const InfoBox = styled.div`
+  background: rgba(212, 175, 55, 0.1);
+  border-left: 3px solid #d4af37;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 4px 4px 0;
+`;
+
+
+
+const InfoText = styled.p`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+`;
+
+const SummarySection = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+`;
+
+const SummaryTitle = styled.h3`
+  font-size: 1.2rem;
+  color: #fff;
+  margin-bottom: 1rem;
+`;
+
+const SummaryRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const SummaryLabel = styled.div`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const SummaryValue = styled.div`
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: ${props => props.isBold ? '600' : '400'};
+`;
+
+const TotalRow = styled(SummaryRow)`
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
+`;
+
+const TotalLabel = styled(SummaryLabel)`
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+`;
+
+const TotalValue = styled(SummaryValue)`
+  font-size: 1.1rem;
+  font-weight: 600;
+`;
+
+const TokenImpactSection = styled.div`
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const TokenImpactTitle = styled.h4`
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 0.5rem;
+`;
+
+const TokenImpactText = styled.p`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+`;
+
+// Helper function to generate calendar days
+const generateCalendarDays = (year, month) => {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+  
+  // Generate days from previous month to fill the first row
+  const prevMonthDays = [];
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevMonthYear = month === 0 ? year - 1 : year;
+  const daysInPrevMonth = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+  
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    const date = new Date(prevMonthYear, prevMonth, daysInPrevMonth - startingDayOfWeek + i + 1);
+    // Apply same seasonal availability pattern to previous month days
+    const isAvailable = prevMonth === 11 || prevMonth === 0 || prevMonth === 1; // Dec, Jan, Feb
+    
+    prevMonthDays.push({
+      date,
+      isCurrentMonth: false,
+      isAvailable
+    });
+  }
+  
+  // Generate days for current month
+  const currentMonthDays = [];
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(year, month, i);
+    
+    // Australian seasons: Summer (Dec-Feb), Autumn (Mar-May), Winter (Jun-Aug), Spring (Sep-Nov)
+    // Make summer months available for short-term stays, block other months for long-term leases
+    const isAvailable = month === 11 || month === 0 || month === 1; // December (11), January (0), February (1)
+    
+    currentMonthDays.push({
+      date,
+      isCurrentMonth: true,
+      isAvailable,
+      isToday: new Date().toDateString() === date.toDateString()
+    });
+  }
+  
+  // Generate days for next month to fill the last row
+  const nextMonthDays = [];
+  const totalDaysShown = prevMonthDays.length + currentMonthDays.length;
+  const daysNeededFromNextMonth = 42 - totalDaysShown; // 6 rows of 7 days
+  
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextMonthYear = month === 11 ? year + 1 : year;
+  
+  for (let i = 1; i <= daysNeededFromNextMonth; i++) {
+    const date = new Date(nextMonthYear, nextMonth, i);
+    // Apply same seasonal availability pattern to next month days
+    const isAvailable = nextMonth === 11 || nextMonth === 0 || nextMonth === 1; // Dec, Jan, Feb
+    
+    nextMonthDays.push({
+      date,
+      isCurrentMonth: false,
+      isAvailable
+    });
+  }
+  
+  return [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
+};
+
+
+
+const OwnerBooking = ({ property, token }) => {
+  const today = new Date();
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [dateRanges, setDateRanges] = useState([]);
+  const [selectedDates, setSelectedDates] = useState([]);
+  const [hoverDate, setHoverDate] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('tokens');
+  
+  // User token holdings - for this implementation we'll assume 2.2 tokens as specified
+  const userTokenHoldings = 2.2;
+  
+  // Confirmation modal state
+
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false);
+  const [selectorYear, setSelectorYear] = useState(today.getFullYear());
+  const [showConfirmationPopup, setShowConfirmationPopup] = useState(false);
+  const [currentReservation, setCurrentReservation] = useState(null);
+  const [editingReservationIndex, setEditingReservationIndex] = useState(null);
+  const [isPaymentPopupOpen, setIsPaymentPopupOpen] = useState(false);
+  // Use the token price directly from props to ensure it's always current
+  const tokenPrice = token.price;
+  
+  const dateSelectorRef = useRef(null);
+  
+  // Calculate the number of nights between selected dates
+  const calculateNightsForSummary = () => {
+    if (selectedDates.length !== 2) return 0;
+    const start = new Date(selectedDates[0]);
+    const end = new Date(selectedDates[1]);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+  
+  // Helper function to calculate tokens needed to exceed $700/day (owner's rate)
+  const calculateTokensPerDay = () => {
+    if (tokenPrice <= 0) return 0;
+    
+    const minimumDailyRate = 700; // Minimum $700 per day for owners
+    // Calculate raw token amount needed for $700
+    const rawTokens = minimumDailyRate / tokenPrice;
+    
+    // Round up to 4 decimal places to ensure we're always at or above $700
+    const tokensNeeded = Math.ceil(rawTokens * 10000) / 10000;
+    
+    // Double-check that the calculated amount is at least $700 equivalent
+    const dollarEquivalent = tokensNeeded * tokenPrice;
+    if (dollarEquivalent < minimumDailyRate) {
+      // If somehow still below $700, adjust upward
+      return Math.ceil((minimumDailyRate / tokenPrice) * 10000) / 10000 + 0.0001;
+    }
+    
+    return tokensNeeded;
+  };
+  
+  // Helper function to calculate tokens needed for market rate ($1,200/day)
+  const calculateMarketRateTokensPerDay = () => {
+    if (tokenPrice <= 0) return 0;
+    
+    const marketDailyRate = 1200; // Market rate of $1,200 per day
+    // Calculate raw token amount needed for $1,200
+    const rawTokens = marketDailyRate / tokenPrice;
+    
+    // Round up to 4 decimal places to ensure we're always at or above $1,200
+    const tokensNeeded = Math.ceil(rawTokens * 10000) / 10000;
+    
+    // Double-check that the calculated amount is at least $1,200 equivalent
+    const dollarEquivalent = tokensNeeded * tokenPrice;
+    if (dollarEquivalent < marketDailyRate) {
+      // If somehow still below $1,200, adjust upward
+      return Math.ceil((marketDailyRate / tokenPrice) * 10000) / 10000 + 0.0001;
+    }
+    
+    return tokensNeeded;
+  };
+  
+  // Check if user qualifies for owner's rate (holds at least 0.1 tokens)
+  const qualifiesForOwnerRate = () => {
+    return userTokenHoldings >= 0.1;
+  };
+  
+  // Get the appropriate rate per day based on user's token holdings
+  const getApplicableTokensPerDay = () => {
+    return qualifiesForOwnerRate() ? calculateTokensPerDay() : calculateMarketRateTokensPerDay();
+  };
+  
+  // Get the rate label based on user's token holdings
+  const getRateLabel = () => {
+    return qualifiesForOwnerRate() ? "Owner's Rate" : "Market Rate";
+  };
+  
+  // State variables for pricing calculations - these will only update when dates change
+  const [nightsSelected, setNightsSelected] = useState(0);
+  const [tokensPerDay, setTokensPerDay] = useState(0);
+  const [tokensNeeded, setTokensNeeded] = useState(0);
+  const [dailyRate, setDailyRate] = useState(0);
+  const [totalCost, setTotalCost] = useState(0);
+  
+  // Update calculations when selected dates change or token price changes
+  useEffect(() => {
+    // Only calculate if dates are selected
+    if (selectedDates.length === 2) {
+      const nights = calculateNightsForSummary();
+      const tokensPerDayValue = calculateTokensPerDay();
+      const tokensNeededValue = nights * tokensPerDayValue;
+      
+      // Update all the state variables with the current token price
+      setNightsSelected(nights);
+      setTokensPerDay(tokensPerDayValue);
+      setTokensNeeded(tokensNeededValue);
+      setDailyRate(tokensPerDayValue * tokenPrice); // Exact conversion
+      setTotalCost(tokensNeededValue * tokenPrice); // Total cost in dollars
+    } else {
+      // Reset values if no dates selected
+      setNightsSelected(0);
+      setTokensPerDay(0);
+      setTokensNeeded(0);
+      setDailyRate(0);
+      setTotalCost(0);
+    }
+  }, [selectedDates, tokenPrice]); // Re-run when dates or token price changes
+  
+  // Calculate total nights across all date ranges
+  const calculateTotalNights = () => {
+    return dateRanges.reduce((total, range) => total + range.nights, 0);
+  };
+  
+  // Calculate tokens needed for a specific date range with current token price
+  const calculateCurrentTokensForRange = (nights) => {
+    const currentTokensPerDay = calculateTokensPerDay();
+    return nights * currentTokensPerDay;
+  };
+  
+  // Calculate total tokens needed across all date ranges using current token price
+  const calculateTotalTokens = () => {
+    return dateRanges.reduce((total, range) => {
+      return total + range.tokens;
+    }, 0);
+  };
+  
+  // Calculate total cost across all date ranges using current token price
+  const calculateTotalDollarCost = () => {
+    return calculateTotalTokens() * tokenPrice;
+  };
+  
+  // Calculate tokens needed for current selection based on applicable rate
+  const calculateApplicableTokensNeeded = () => {
+    if (selectedDates.length !== 2) return 0;
+    const nights = calculateNights(new Date(selectedDates[0]), new Date(selectedDates[1]));
+    return nights * getApplicableTokensPerDay();
+  };
+  
+  // Calculate dollar cost for current selection based on applicable rate
+  const calculateApplicableDollarCost = () => {
+    return calculateApplicableTokensNeeded() * tokenPrice;
+  };
+  
+  // Calculate current token amount for a specific reservation
+  const getCurrentTokensForReservation = (nights) => {
+    const currentTokensPerDay = calculateTokensPerDay();
+    return nights * currentTokensPerDay;
+  };
+  
+  // Calculate current dollar cost for a specific reservation
+  const getCurrentDollarCostForReservation = (nights) => {
+    return getCurrentTokensForReservation(nights) * tokenPrice;
+  };
+  
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+  
+  // Check if a date is already reserved in any saved date range
+  const isDateAlreadyReserved = (date) => {
+    return dateRanges.some(range => {
+      return date >= range.arrival && date <= range.departure;
+    });
+  };
+  
+  // Handle date selection
+  const handleDateClick = (day) => {
+    if (!day.isAvailable || !day.isCurrentMonth) return;
+    
+    // Check if the date is already reserved in another booking
+    if (isDateAlreadyReserved(day.date)) {
+      // Don't allow selection of already reserved dates
+      return;
+    }
+    
+    // If no dates selected yet or we already have two dates, start a new selection
+    if (selectedDates.length === 0 || selectedDates.length === 2) {
+      setSelectedDates([day.date]);
+    } 
+    // If we have one date selected, complete the range
+    else if (selectedDates.length === 1) {
+      // Check if any date in the range is already reserved
+      const startDate = new Date(Math.min(selectedDates[0].getTime(), day.date.getTime()));
+      const endDate = new Date(Math.max(selectedDates[0].getTime(), day.date.getTime()));
+      
+      // Check each date in the range
+      let hasReservedDate = false;
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        if (isDateAlreadyReserved(new Date(currentDate))) {
+          hasReservedDate = true;
+          break;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Only set the date range if no reserved dates are in the range
+      if (!hasReservedDate) {
+        // Ensure dates are in chronological order
+        const newDates = [selectedDates[0], day.date].sort((a, b) => a - b);
+        setSelectedDates(newDates);
+      }
+    }
+    
+    // Clear hover date when clicking
+    setHoverDate(null);
+  };
+  
+  // Predefined colors for reservations
+  const reservationColors = [
+    { bg: 'rgba(212, 175, 55, 0.25)', border: 'rgba(212, 175, 55, 0.6)' },  // Gold
+    { bg: 'rgba(86, 180, 235, 0.25)', border: 'rgba(86, 180, 235, 0.6)' },    // Blue
+    { bg: 'rgba(230, 126, 34, 0.25)', border: 'rgba(230, 126, 34, 0.6)' },    // Orange
+    { bg: 'rgba(46, 204, 113, 0.25)', border: 'rgba(46, 204, 113, 0.6)' },    // Green
+    { bg: 'rgba(155, 89, 182, 0.25)', border: 'rgba(155, 89, 182, 0.6)' },    // Purple
+  ];
+  
+  // Calculate the number of nights between two dates
+  const calculateNights = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+  
+  // Calculate tokens needed and approximate cost for a stay
+  const calculateTokensNeeded = (startDate, endDate) => {
+    const nights = calculateNights(startDate, endDate);
+    return nights * calculateTokensPerDay();
+  };
+  
+  const calculateTotalCost = (tokensAmount) => {
+    return tokensAmount * tokenPrice; // Approximate dollar value
+  };
+  
+  // Add the current date range to the list of date ranges
+  const addDateRange = () => {
+    if (selectedDates.length === 2) {
+      const arrival = new Date(selectedDates[0]);
+      const departure = new Date(selectedDates[1]);
+      
+      // Use the current token price at the moment the reservation is made
+      const currentTokensPerDay = calculateTokensPerDay();
+      const nights = calculateNights(arrival, departure);
+      const tokensAmount = nights * currentTokensPerDay;
+      const currentDailyRate = currentTokensPerDay * tokenPrice;
+      const totalCost = tokensAmount * tokenPrice;
+      
+      // Add current selection to date ranges with a color and cost info
+      const newDateRanges = [...dateRanges, {
+        arrival,
+        departure,
+        nights,
+        tokens: tokensAmount,
+        tokensPerDay: currentTokensPerDay,
+        dailyRate: currentDailyRate, // Exact dollar value per day based on current token price
+        totalCost,
+        tokenPriceAtBooking: tokenPrice, // Store the token price at time of booking
+        color: reservationColors[dateRanges.length % reservationColors.length]
+      }];
+      
+      // Sort date ranges by arrival date
+      newDateRanges.sort((a, b) => a.arrival - b.arrival);
+      
+      setDateRanges(newDateRanges);
+      
+      // Clear current selection to allow for a new selection
+      setSelectedDates([]);
+    }
+  };
+  
+  // Edit a date range
+  const editReservation = (index) => {
+    // Set the dates from the selected reservation
+    const reservation = dateRanges[index];
+    setSelectedDates([reservation.arrival, reservation.departure]);
+    
+    // Set the editing index to track which reservation is being edited
+    setEditingReservationIndex(index);
+    
+    // Remove the reservation being edited
+    const newDateRanges = [...dateRanges];
+    newDateRanges.splice(index, 1);
+    setDateRanges(newDateRanges);
+  };
+  
+  // Remove a date range
+  const removeDateRange = (index) => {
+    const newDateRanges = [...dateRanges];
+    newDateRanges.splice(index, 1);
+    setDateRanges(newDateRanges);
+    
+    // If we were editing this reservation, clear the editing state
+    if (editingReservationIndex === index) {
+      setEditingReservationIndex(null);
+      setSelectedDates([]);
+    } else if (editingReservationIndex !== null && index < editingReservationIndex) {
+      // Adjust the editing index if we removed a reservation before it
+      setEditingReservationIndex(editingReservationIndex - 1);
+    }
+  };
+  
+  // Handle mouse enter on day cell
+  const handleDayHover = (day) => {
+    if (!day.isAvailable || !day.isCurrentMonth) return;
+    
+    // Only track hover when we have exactly one date selected
+    if (selectedDates.length === 1) {
+      setHoverDate(day.date);
+    }
+  };
+  
+  // Handle mouse leave from calendar grid
+  const handleMouseLeave = () => {
+    setHoverDate(null);
+  };
+  
+  // Check if a date is in the hover range (between selected date and hover date)
+  const isInHoverRange = (date) => {
+    if (selectedDates.length !== 1 || !hoverDate) return false;
+    
+    const startDate = selectedDates[0] < hoverDate ? selectedDates[0] : hoverDate;
+    const endDate = selectedDates[0] < hoverDate ? hoverDate : selectedDates[0];
+    
+    return date >= startDate && date <= endDate;
+  };
+  
+  // Check if a date is in the selected range (between first and second selected dates)
+  const isInSelectedRange = (date) => {
+    if (selectedDates.length !== 2) return false;
+    
+    const startDate = new Date(Math.min(selectedDates[0].getTime(), selectedDates[1].getTime()));
+    const endDate = new Date(Math.max(selectedDates[0].getTime(), selectedDates[1].getTime()));
+    
+    return date >= startDate && date <= endDate;
+  };
+  
+  // Check if a date is in any of the saved date ranges and return the color
+  const isInSavedDateRanges = (date) => {
+    for (let i = 0; i < dateRanges.length; i++) {
+      const range = dateRanges[i];
+      if (date >= range.arrival && date <= range.departure) {
+        return { inRange: true, color: range.color, index: i };
+      }
+    }
+    return { inRange: false };
+  };
+  
+  // Navigate to previous month
+  const goToPrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+  
+  // Navigate to next month
+  const goToNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+  
+  // Handle showing payment options
+  const handleShowPaymentOptions = () => {
+    if (selectedDates.length > 0) {
+      setShowPaymentOptions(true);
+    }
+  };
+  
+  // Handle click outside of date selector to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dateSelectorRef.current && !dateSelectorRef.current.contains(event.target)) {
+        setIsDateSelectorOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // Toggle date selector dropdown
+  const toggleDateSelector = () => {
+    setIsDateSelectorOpen(!isDateSelectorOpen);
+  };
+  
+  // Handle year change in selector
+  const changeYear = (increment) => {
+    setSelectorYear(selectorYear + increment);
+  };
+  
+  // Handle month selection from dropdown
+  const handleMonthYearSelect = (month) => {
+    setCurrentMonth(month);
+    setCurrentYear(selectorYear);
+    setIsDateSelectorOpen(false);
+  };
+  
+  // Find the next available month (summer month in Australia: Dec, Jan, Feb)
+  const jumpToNextAvailableMonth = () => {
+    let targetMonth;
+    let targetYear = currentYear;
+    
+    // Current month is before December
+    if (currentMonth < 11) {
+      targetMonth = 11; // December
+    }
+    // Current month is December
+    else if (currentMonth === 11) {
+      targetMonth = 0; // January
+      targetYear = currentYear + 1;
+    }
+    // Current month is January
+    else if (currentMonth === 0) {
+      targetMonth = 1; // February
+    }
+    // Current month is February or later
+    else {
+      targetMonth = 11; // December
+      targetYear = currentYear + 1;
+    }
+    
+    setCurrentMonth(targetMonth);
+    setCurrentYear(targetYear);
+  };
+  
+  // Generate calendar days
+  const calendarDays = generateCalendarDays(currentYear, currentMonth);
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  // Function to prepare current reservation data for the popup
+  const prepareCurrentReservation = () => {
+    if (selectedDates.length !== 2) return null;
+    
+    const arrival = new Date(selectedDates[0]);
+    const departure = new Date(selectedDates[1]);
+    const nights = calculateNights(arrival, departure);
+    const tokensPerDay = calculateTokensPerDay();
+    const tokensAmount = nights * tokensPerDay;
+    const dailyRate = tokensPerDay * tokenPrice;
+    const totalCost = tokensAmount * tokenPrice;
+    
+    return {
+      arrival,
+      departure,
+      nights,
+      tokens: tokensAmount,
+      tokensPerDay,
+      dailyRate,
+      totalCost,
+      tokenPriceAtBooking: tokenPrice,
+      color: reservationColors[dateRanges.length % reservationColors.length]
+    };
+  };
+  
+
+  
+
+  
+  return (
+    <OwnerBookingContainer>
+      {showConfirmationPopup && currentReservation && (
+        <PopupOverlay>
+          <PopupContainer>
+            <PopupHeader>
+              <PopupTitle>Confirm Your Reservation</PopupTitle>
+              <CloseButton onClick={() => setShowConfirmationPopup(false)}>
+                <BiX />
+              </CloseButton>
+            </PopupHeader>
+            
+            <PopupSection>
+              <PopupSectionTitle>Reservation Details</PopupSectionTitle>
+              <ReservationCard color={currentReservation.color?.border}>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <strong>{property.name}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>Arrival</div>
+                    <div>{currentReservation.arrival.toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', margin: '0 1rem' }}>
+                    <span style={{ color: '#aaa' }}>→</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>Departure</div>
+                    <div>{currentReservation.departure.toLocaleDateString()}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>Nights</div>
+                    <div>{currentReservation.nights}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>Elara</div>
+                    <div>{currentReservation.tokens.toFixed(4)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>Approx. Cost</div>
+                    <div>{formatCurrency(currentReservation.totalCost)}</div>
+                  </div>
+                </div>
+              </ReservationCard>
+            </PopupSection>
+            
+            <PopupSection>
+              <PopupSectionTitle>Payment Method</PopupSectionTitle>
+              <PaymentMethodsContainer>
+                <PaymentMethodOption 
+                  isSelected={paymentMethod === 'tokens'}
+                  onClick={() => setPaymentMethod('tokens')}
+                >
+                  <PaymentMethodIcon>
+                    <span style={{ color: '#d4af37', fontSize: '1.2rem' }}>₮</span>
+                  </PaymentMethodIcon>
+                  <PaymentMethodDetails>
+                    <PaymentMethodName>Loaf Elara</PaymentMethodName>
+                    <PaymentMethodDescription>Pay with your LOAF tokens</PaymentMethodDescription>
+                  </PaymentMethodDetails>
+                </PaymentMethodOption>
+                
+                <PaymentMethodOption 
+                  isSelected={paymentMethod === 'deposit'}
+                  onClick={() => setPaymentMethod('deposit')}
+                >
+                  <PaymentMethodIcon>
+                    <span style={{ color: '#fff', fontSize: '1.2rem' }}>$</span>
+                  </PaymentMethodIcon>
+                  <PaymentMethodDetails>
+                    <PaymentMethodName>Platform Deposit</PaymentMethodName>
+                    <PaymentMethodDescription>Pay with your platform balance</PaymentMethodDescription>
+                  </PaymentMethodDetails>
+                </PaymentMethodOption>
+                
+                <PaymentMethodOption 
+                  isSelected={paymentMethod === 'fiat'}
+                  onClick={() => setPaymentMethod('fiat')}
+                >
+                  <PaymentMethodIcon>
+                    <span style={{ color: '#4CAF50', fontSize: '1.2rem' }}>$</span>
+                  </PaymentMethodIcon>
+                  <PaymentMethodDetails>
+                    <PaymentMethodName>Fiat Payment</PaymentMethodName>
+                    <PaymentMethodDescription>Pay with credit card or bank transfer</PaymentMethodDescription>
+                  </PaymentMethodDetails>
+                </PaymentMethodOption>
+                
+                <PaymentMethodOption 
+                  isSelected={paymentMethod === 'crypto'}
+                  onClick={() => setPaymentMethod('crypto')}
+                >
+                  <PaymentMethodIcon>
+                    <span style={{ color: '#ff9900', fontSize: '1.2rem' }}>₿</span>
+                  </PaymentMethodIcon>
+                  <PaymentMethodDetails>
+                    <PaymentMethodName>Cryptocurrency</PaymentMethodName>
+                    <PaymentMethodDescription>Pay with BTC, ETH, or other cryptocurrencies</PaymentMethodDescription>
+                  </PaymentMethodDetails>
+                </PaymentMethodOption>
+              </PaymentMethodsContainer>
+            </PopupSection>
+            
+            <ButtonsContainer>
+              <BackButton onClick={() => setShowConfirmationPopup(false)}>
+                Back to Calendar
+              </BackButton>
+              <ConfirmPaymentButton onClick={handleConfirmReservation}>
+                Confirm Reservation
+              </ConfirmPaymentButton>
+            </ButtonsContainer>
+          </PopupContainer>
+        </PopupOverlay>
+      )}
+      
+      <ExplanationSection>
+        <ExplanationTitle>
+          <BiInfoCircle size={24} /> Property Reservation System
+        </ExplanationTitle>
+        <ExplanationText>
+          As a LOAF home owner, you have exclusive rights to reserve your property at an owner's rate for private use,
+          gatherings, or stays. From a single day to extended stays, enjoy the flexibility of booking your property
+          when available.
+        </ExplanationText>
+        
+        <InfoBox>
+          <InfoText>
+            <strong>Flexible Payment Options:</strong> Pay using tokens from any property holding, platform deposits, fiat currency, or cryptocurrency.
+          </InfoText>
+        </InfoBox>
+        
+        <BenefitsGrid>
+          <BenefitCard>
+            <BenefitTitle><BiCheck size={20} /> Owner's Rate</BenefitTitle>
+            <BenefitText>
+              Access special owner's rates when you hold at least 0.1 tokens in the property.
+            </BenefitText>
+          </BenefitCard>
+          
+          <BenefitCard>
+            <BenefitTitle><BiCheck size={20} /> Multiple Payment Methods</BenefitTitle>
+            <BenefitText>
+              Choose from tokens, fiat, or crypto payment options for maximum convenience.
+            </BenefitText>
+          </BenefitCard>
+          
+          <BenefitCard>
+            <BenefitTitle><BiCheck size={20} /> Flexible Booking</BenefitTitle>
+            <BenefitText>
+              Book your property for any duration - from single day events to extended vacation stays.
+            </BenefitText>
+          </BenefitCard>
+          
+          <BenefitCard>
+            <BenefitTitle><BiCheck size={20} /> Priority Access</BenefitTitle>
+            <BenefitText>
+              Enjoy priority booking windows and special access to your property's calendar.
+            </BenefitText>
+          </BenefitCard>
+        </BenefitsGrid>
+      </ExplanationSection>
+      
+      <BookingSection>
+        <BookingTitle>Reserve Your Stay</BookingTitle>
+        
+        <BookingGrid>
+          <CalendarContainer>
+            <ResidenceCalendarTitle>Residence Calendar</ResidenceCalendarTitle>
+            <CalendarHeader>
+              <CalendarTitle>
+                <BiCalendar size={20} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                <DateSelectorWrapper ref={dateSelectorRef}>
+                  <DateSelectorButton onClick={toggleDateSelector}>
+                    {monthNames[currentMonth]} {currentYear} <BiChevronDown size={16} style={{ marginLeft: '0.25rem' }} />
+                  </DateSelectorButton>
+                  
+                  <DateSelectorDropdown isOpen={isDateSelectorOpen}>
+                    <DropdownSection>
+                      <YearSelector>
+                        <YearButton onClick={() => changeYear(-1)}>&lt;</YearButton>
+                        <YearDisplay>{selectorYear}</YearDisplay>
+                        <YearButton onClick={() => changeYear(1)}>&gt;</YearButton>
+                      </YearSelector>
+                      
+                      <DropdownTitle>Select Month</DropdownTitle>
+                      <MonthGrid>
+                        {monthNames.map((month, index) => (
+                          <MonthButton 
+                            key={month} 
+                            isSelected={currentMonth === index && currentYear === selectorYear}
+                            onClick={() => handleMonthYearSelect(index)}
+                          >
+                            {month.substring(0, 3)}
+                          </MonthButton>
+                        ))}
+                      </MonthGrid>
+                    </DropdownSection>
+                  </DateSelectorDropdown>
+                </DateSelectorWrapper>
+              </CalendarTitle>
+              <CalendarNavigation>
+                <NavButton onClick={goToPrevMonth}>&lt;</NavButton>
+                <NavButton onClick={goToNextMonth}>&gt;</NavButton>
+                <JumpButton onClick={jumpToNextAvailableMonth}>
+                  Next Available Date
+                </JumpButton>
+              </CalendarNavigation>
+            </CalendarHeader>
+            
+            <CalendarGrid onMouseLeave={handleMouseLeave}>
+              {dayNames.map(day => (
+                <DayHeader key={day}>{day}</DayHeader>
+              ))}
+              
+              {calendarDays.map((day, index) => {
+                const savedRangeInfo = day.isAvailable && day.isCurrentMonth ? isInSavedDateRanges(day.date) : { inRange: false };
+                return (
+                  <DayCell 
+                    key={index}
+                    isAvailable={day.isAvailable}
+                    isCurrentMonth={day.isCurrentMonth}
+                    isToday={day.isToday}
+                    isSelected={selectedDates.some(date => date.toDateString() === day.date.toDateString())}
+                    isInSelectedRange={
+                      day.isAvailable && 
+                      day.isCurrentMonth && 
+                      isInSelectedRange(day.date)
+                    }
+                    savedRangeColor={savedRangeInfo.inRange ? savedRangeInfo.color : null}
+                    reservationNumber={savedRangeInfo.inRange ? (savedRangeInfo.index + 1) : null}
+                    isInHoverRange={
+                      day.isAvailable && 
+                      day.isCurrentMonth && 
+                      isInHoverRange(day.date)
+                    }
+                    onClick={() => handleDateClick(day)}
+                    onMouseEnter={() => handleDayHover(day)}
+                  >
+                    {day.date.getDate()}
+                  </DayCell>
+                );
+              })}
+            </CalendarGrid>
+            
+
+            
+            {selectedDates.length > 0 && (
+              <DateRangeDisplay>
+                <DateBox>
+                  <DateLabel>Arrival</DateLabel>
+                  <DateValue>
+                    {selectedDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </DateValue>
+                </DateBox>
+                
+                <span>→</span>
+                
+                <DateBox>
+                  <DateLabel>Departure</DateLabel>
+                  <DateValue>
+                    {selectedDates[selectedDates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </DateValue>
+                </DateBox>
+              </DateRangeDisplay>
+            )}
+            
+            <ButtonContainer>
+              {/* Only show Add Date Range button if dates are selected or there are already date ranges */}
+              {(selectedDates.length === 2 || dateRanges.length > 0) && (
+                <AddDateRangeButton 
+                  onClick={() => {
+                    if (selectedDates.length === 2) {
+                      // If dates are selected, add them as a range
+                      addDateRange();
+                    } else {
+                      // If no dates are selected, just allow the user to select new dates
+                      // No action needed as the calendar is already in date selection mode
+                    }
+                  }}
+                >
+                  {dateRanges.length === 0 ? 'Add Date Range' : 'Add Another Date Range'}
+                </AddDateRangeButton>
+              )}
+              
+              {selectedDates.length === 2 && (
+                <ConfirmButton
+                  onClick={() => {
+                    // Just add the current date range without proceeding to payment
+                    addDateRange();
+                  }}
+                >
+                  Confirm
+                </ConfirmButton>
+              )}
+            </ButtonContainer>
+            
+            {/* Reservation display moved to the summary section */}
+          </CalendarContainer>
+          
+          <BookingDetailsContainer>
+            
+            {showPaymentOptions && (
+              <PaymentSection>
+                <PaymentTitle>Payment Method</PaymentTitle>
+                <PaymentOptions>
+                  <PaymentOption 
+                    isSelected={paymentMethod === 'tokens'}
+                    onClick={() => setPaymentMethod('tokens')}
+                  >
+                    <RadioButton isSelected={paymentMethod === 'tokens'} />
+                    <PaymentOptionContent>
+                      <PaymentOptionTitle>Pay with Elara</PaymentOptionTitle>
+                      <PaymentOptionDescription>
+                        Use your LOAF Elara as payment. Elara will be removed from circulation.
+                      </PaymentOptionDescription>
+                    </PaymentOptionContent>
+                  </PaymentOption>
+                  
+                  <PaymentOption 
+                    isSelected={paymentMethod === 'deposit'}
+                    onClick={() => setPaymentMethod('deposit')}
+                  >
+                    <RadioButton isSelected={paymentMethod === 'deposit'} />
+                    <PaymentOptionContent>
+                      <PaymentOptionTitle>Platform Deposit</PaymentOptionTitle>
+                      <PaymentOptionDescription>
+                        Pay with cash deposit and keep your tokens. No impact on token circulation.
+                      </PaymentOptionDescription>
+                    </PaymentOptionContent>
+                  </PaymentOption>
+                  
+                  <PaymentOption 
+                    isSelected={paymentMethod === 'collateral'}
+                    onClick={() => setPaymentMethod('collateral')}
+                  >
+                    <RadioButton isSelected={paymentMethod === 'collateral'} />
+                    <PaymentOptionContent>
+                      <PaymentOptionTitle>Elara as Collateral</PaymentOptionTitle>
+                      <PaymentOptionDescription>
+                        Lock Elara as collateral during your reservation period. Elara returned after your stay.
+                      </PaymentOptionDescription>
+                    </PaymentOptionContent>
+                  </PaymentOption>
+                </PaymentOptions>
+              </PaymentSection>
+            )}
+            
+            <SummarySection>
+              <SummaryTitle>Reservation Summary</SummaryTitle>
+              
+              <SummaryRow>
+                <SummaryLabel>Property</SummaryLabel>
+                <SummaryValue>{property.name}</SummaryValue>
+              </SummaryRow>
+              
+              {/* Show current selection if dates are selected */}
+              {selectedDates.length === 2 && (
+                <>
+                  <SummaryRow>
+                    <SummaryLabel>Current Selection</SummaryLabel>
+                    <SummaryValue>
+                      <div style={{ fontWeight: '500', fontSize: '0.95rem' }}>
+                        {selectedDates[0].toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - {selectedDates[1].toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                    </SummaryValue>
+                  </SummaryRow>
+                  
+                  <SummaryRow>
+                    <SummaryLabel>Nights</SummaryLabel>
+                    <SummaryValue>{nightsSelected} {nightsSelected === 1 ? 'night' : 'nights'}</SummaryValue>
+                  </SummaryRow>
+                  
+                  <SummaryRow>
+                    <SummaryLabel>Market Rate per Night</SummaryLabel>
+                    <SummaryValue>
+                      {calculateMarketRateTokensPerDay().toFixed(4)} Elara
+                      <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
+                        ≈ {formatCurrency(calculateMarketRateTokensPerDay() * tokenPrice)}
+                      </div>
+                    </SummaryValue>
+                  </SummaryRow>
+                  
+                  <SummaryRow>
+                    <SummaryLabel>
+                      Owner's Rate per Night
+                      <TooltipContainer>
+                        <BiInfoCircle size={16} color="rgba(212, 175, 55, 0.8)" />
+                        <Tooltip className="tooltip">
+                          Owners are classified as those who hold above 0.1% of the property or 0.1 Elara in the property. Owners do not have to pay with Elara to access this rate.
+                        </Tooltip>
+                      </TooltipContainer>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(212, 175, 55, 0.8)', marginTop: '4px' }}>
+                        Your Holdings: {userTokenHoldings.toFixed(2)} Elara
+                      </div>
+                    </SummaryLabel>
+                    <SummaryValue>
+                      {tokensPerDay.toFixed(4)} Elara
+                      <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
+                        ≈ {formatCurrency(dailyRate)}
+                      </div>
+                    </SummaryValue>
+                  </SummaryRow>
+                  
+
+                  <TotalRow>
+                    <TotalLabel>Selection Total ({getRateLabel()})</TotalLabel>
+                    <SummaryValue isBold={true}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: '600' }}>{calculateApplicableTokensNeeded().toFixed(4)} Elara</span>
+                      <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                        ≈ {formatCurrency(calculateApplicableDollarCost())}
+                      </div>
+                    </SummaryValue>
+                  </TotalRow>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+                    <ConfirmButton
+                      onClick={() => {
+                        // Just add the current date range without proceeding to payment
+                        addDateRange();
+                      }}
+                      style={{ width: 'auto', padding: '0.5rem 1.5rem' }}
+                    >
+                      Confirm
+                    </ConfirmButton>
+                  </div>
+                  
+                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', margin: '0.5rem 0' }}></div>
+                </>
+              )}
+              
+              {/* Show confirmed bookings */}
+              {dateRanges.length > 0 && (
+                <>
+                  <SummaryRow>
+                    <SummaryLabel>Reservations</SummaryLabel>
+                    <SummaryValue>{dateRanges.length}</SummaryValue>
+                  </SummaryRow>
+                                    {dateRanges.map((range, index) => (
+                    <div key={index} style={{ 
+                      margin: '0.75rem 0', 
+                      padding: '0.75rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                      borderRadius: '4px',
+                      borderLeft: `4px solid ${range.color ? range.color.border : '#d4af37'}`,
+                      position: 'relative'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '0.5rem'
+                      }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>
+                          Reservation {index + 1}
+                        </div>
+                        <div style={{ display: 'flex' }}>
+                          <EditButton onClick={() => editReservation(index)} style={{ position: 'static', margin: '0 0.5rem 0 0' }}>
+                            <BiPencil size={16} />
+                          </EditButton>
+                          <RemoveButton onClick={() => removeDateRange(index)} style={{ position: 'static' }}>
+                            <BiX size={18} />
+                          </RemoveButton>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>Arrival</div>
+                          <div style={{ fontWeight: '500' }}>
+                            {range.arrival.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        </div>
+                        <div style={{ margin: '0 0.75rem', color: 'rgba(255, 255, 255, 0.4)' }}>→</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>Departure</div>
+                          <div style={{ fontWeight: '500' }}>
+                            {range.departure.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginTop: '0.5rem',
+                        paddingTop: '0.5rem',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                            {range.nights} {range.nights === 1 ? 'night' : 'nights'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.9rem', color: '#d4af37', fontWeight: '500' }}>
+                            {getCurrentTokensForReservation(range.nights).toFixed(4)} tokens
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                            ≈ {formatCurrency(getCurrentDollarCostForReservation(range.nights))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  
+                  <TotalRow>
+                    <TotalLabel>Total Stay</TotalLabel>
+                    <TotalValue>
+                      {calculateTotalNights()} {calculateTotalNights() === 1 ? 'night' : 'nights'}
+                    </TotalValue>
+                  </TotalRow>
+                  
+                  <TotalRow>
+                    <TotalLabel>Total Cost ({getRateLabel()})</TotalLabel>
+                    <TotalValue>
+                      <span style={{ fontSize: '1.05rem', fontWeight: '600' }}>{calculateTotalTokens().toFixed(4)} Elara</span>
+                      <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                        ≈ {formatCurrency(calculateTotalDollarCost())}
+                      </div>
+                    </TotalValue>
+                  </TotalRow>
+                </>
+              )}
+              
+              {/* Token Impact section removed as requested */}
+            </SummarySection>
+            
+            {dateRanges.length > 0 && (
+              <BookingButton onClick={() => setIsPaymentPopupOpen(true)}>
+                Confirm Reservation
+              </BookingButton>
+            )}
+          </BookingDetailsContainer>
+        </BookingGrid>
+      </BookingSection>
+      
+      {/* Only render PaymentPopup when needed and when there are date ranges */}
+      {isPaymentPopupOpen && dateRanges && dateRanges.length > 0 && (
+        <div id="payment-popup-container">
+          <PaymentPopup
+            isOpen={true}
+            onClose={() => setIsPaymentPopupOpen(false)}
+            onConfirm={(paymentMethod) => {
+              console.log(`Payment confirmed with method: ${paymentMethod}`);
+              // Process the payment and reservation
+              setIsPaymentPopupOpen(false);
+            }}
+            selectedDates={[
+              dateRanges[0].arrival,
+              dateRanges[0].departure
+            ]}
+            totalCost={dateRanges[0].tokens || 0}
+            isOwnerRate={userTokenHoldings >= 0.1}
+            tokenPrice={tokenPrice || 0}
+            ownerRate={dateRanges[0].tokensPerDay || 0}
+            marketRate={calculateMarketRatePerDay() || 0}
+            userTokenHoldings={userTokenHoldings || 0}
+            propertyName={property?.name || 'Property'}
+          />
+        </div>
+      )}
+    </OwnerBookingContainer>
+  );
+};
+
+
+
+export default OwnerBooking;

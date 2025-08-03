@@ -1,0 +1,937 @@
+import React, { useState, useEffect, useRef } from 'react';
+import styled from 'styled-components';
+import { Link } from 'react-router-dom';
+
+// Import actual components
+import BidPanel from '../components/AuctionComponents/BidPanel';
+import ActiveBidsPanel from '../components/AuctionComponents/ActiveBidsPanel';
+import BidDistributionChart from '../components/AuctionComponents/BidDistributionChart';
+import AuctionStatusPanel from '../components/AuctionComponents/AuctionStatusPanel';
+
+// Styled components
+const PageContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: var(--color-text, #f8f9fa);
+  font-family: var(--font-family, 'Inter', sans-serif);
+`;
+
+const BackLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary, #848e9c);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  
+  svg {
+    margin-right: 0.5rem;
+  }
+  
+  &:hover {
+    color: var(--color-accent, #f0b90b);
+  }
+`;
+
+const PropertyHeader = styled.div`
+  display: flex;
+  margin-bottom: 2rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+const PropertyImage = styled.div`
+  width: 300px;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-right: 2rem;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+`;
+
+const PropertyInfo = styled.div`
+  flex: 1;
+`;
+
+const PropertyName = styled.h1`
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+`;
+
+const PropertyLocation = styled.p`
+  color: var(--color-text-secondary, #848e9c);
+  margin-bottom: 1rem;
+`;
+
+const PropertyStats = styled.div`
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  align-items: center;
+  
+  svg {
+    margin-right: 0.5rem;
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const MainContent = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  
+  @media (max-width: 1024px) {
+    display: block;
+  }
+`;
+
+const MobilePlaceBidButton = styled.button`
+  display: none;
+  background-color: var(--color-accent, #f0b90b);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+  
+  @media (max-width: 1024px) {
+    display: block;
+  }
+  
+  &:hover {
+    background-color: #d9a400;
+  }
+`;
+
+const LeftColumn = styled.div`
+  @media (max-width: 1024px) {
+    .bid-distribution-section {
+      margin-top: 2rem;
+    }
+  }
+`;
+
+const RightColumn = styled.div`
+  @media (max-width: 1024px) {
+    margin-top: 2rem;
+  }
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const ExplainerBox = styled.div`
+  background-color: rgba(var(--color-accent-rgb, 240, 185, 11), 0.1);
+  border: 1px solid rgba(var(--color-accent-rgb, 240, 185, 11), 0.3);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  
+  h3 {
+    color: var(--color-accent, #f0b90b);
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  
+  .key-point {
+    font-weight: bold;
+    color: var(--color-accent, #f0b90b);
+  }
+`;
+
+const AuctionTest = () => {
+  // Mock property data
+  const property = {
+    id: 'auction-test-1',
+    name: '83 Fitzwilliam Road',
+    location: 'Vaucluse, Sydney',
+    imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80',
+    bedrooms: 5,
+    bathrooms: 4,
+    carSpots: 2,
+    propertyType: 'House',
+    totalTokens: 100
+  };
+
+  // State for auction data
+  const [clearingPrice, setClearingPrice] = useState(120000); // Start at 120k instead of 130k
+  const [startingPrice] = useState(130000);
+  const [propertyValue, setPropertyValue] = useState(13000000);
+  const [timeRemaining, setTimeRemaining] = useState(86400); // 24 hours in seconds
+  const [userBids, setUserBids] = useState([
+    { id: 'bid1', price: 132000, tokenAmount: 1.5, timestamp: new Date().toISOString() },
+    { id: 'bid2', price: 145000, tokenAmount: 2.25, timestamp: new Date().toISOString() },
+    { id: 'bid3', price: 125000, tokenAmount: 0.75, timestamp: new Date().toISOString() } // Below clearing price
+  ]);
+  const [bidToAmend, setBidToAmend] = useState(null);
+  const [bidBeingAmended, setBidBeingAmended] = useState(null);
+  // Track if the user has interacted with the bid panel to fix the bid price
+  // Set to true by default so bids start coming in immediately
+  const [userInteractedWithBidPanel, setUserInteractedWithBidPanel] = useState(true);
+  const bidPanelRef = useRef(null);
+  
+  // Generate bid distribution data with $1,000 intervals
+  const generateBidDistribution = () => {
+    const distribution = [];
+    // Create price ranges from $130k to $200k in $1,000 increments
+    for (let price = 130000; price < 200000; price += 1000) {
+      distribution.push({
+        priceRange: [price, price + 1000],
+        count: 0,
+        tokens: 0
+      });
+    }
+    return distribution;
+  };
+  
+  const [bidDistribution, setBidDistribution] = useState(generateBidDistribution());
+  
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState([
+    { user: 'Alex S.', action: 'placed a bid', amount: '$142', tokens: 2, time: '2 minutes ago' },
+    { user: 'Morgan W.', action: 'placed a bid', amount: '$138.5', tokens: 1, time: '5 minutes ago' },
+    { user: 'Taylor R.', action: 'placed a bid', amount: '$143', tokens: 3, time: '8 minutes ago' },
+    { user: 'Jordan K.', action: 'placed a bid', amount: '$141', tokens: 2, time: '12 minutes ago' },
+    { user: 'Casey P.', action: 'placed a bid', amount: '$139', tokens: 1, time: '15 minutes ago' }
+  ]);
+  
+  // State to track recent bid activity for price impact
+  const [recentBidImpact, setRecentBidImpact] = useState(1);
+  
+  // Effect to simulate periodic bids and update clearing price
+  useEffect(() => {
+    // Set up interval for new bids
+    const bidInterval = setInterval(() => {
+      // Current price is the clearing price
+      const currentPrice = clearingPrice;
+      
+      // Get highest bid from recent activity to use as reference
+      const highestRecentBidPrice = recentActivity.length > 0 ?
+        parseFloat(recentActivity[0].amount.replace(/[^0-9.k]/g, '')) : currentPrice / 1000;
+      
+      // Determine premium range based on auction phase and slow down as we approach 150k
+      let minPremium = 0.001; // Minimum 0.1% above reference price
+      let maxPremium;
+      let bidProbability = 0.4; // Default 40% chance of bid
+      
+      if (currentPrice < 140000) {
+        // Early auction - wider range of bids, some aggressive
+        maxPremium = 0.05; // Up to 5% premium
+        bidProbability = 0.6; // 60% chance of bid
+      } else if (currentPrice < 145000) {
+        // Mid auction - more conservative bidding
+        maxPremium = 0.035; // Up to 3.5% premium
+        bidProbability = 0.4; // 40% chance of bid
+      } else if (currentPrice < 148000) {
+        // Approaching property value - more cautious
+        maxPremium = 0.02; // Up to 2% premium
+        bidProbability = 0.25; // 25% chance of bid
+      } else if (currentPrice < 150000) {
+        // Near valuation - very cautious
+        maxPremium = 0.01; // Up to 1% premium
+        bidProbability = 0.15; // 15% chance of bid
+      } else {
+        // Above valuation - extremely few high bids
+        maxPremium = 0.005; // Up to 0.5% premium
+        bidProbability = 0.05; // 5% chance of bid
+      }
+      
+      // Only proceed with bid if random chance is below bid probability
+      if (Math.random() > bidProbability) {
+        return; // Skip this bid cycle
+      }
+      
+      // Generate a realistic bid amount with appropriate premium
+      const premium = minPremium + Math.random() * (maxPremium - minPremium);
+      
+      // Use the reference price (either clearing price or highest recent bid)
+      const referencePrice = Math.max(currentPrice, highestRecentBidPrice * 1000);
+      const bidAmount = Math.round(referencePrice * (1 + premium));
+      
+      // Token amount also changes as auction progresses
+      // Fewer tokens per bid as price increases
+      // Use fractional tokens (up to 3 decimal places)
+      let maxTokens;
+      if (currentPrice < 140000) maxTokens = 2.5;
+      else if (currentPrice < 145000) maxTokens = 1.75;
+      else if (currentPrice < 150000) maxTokens = 1.25;
+      else maxTokens = 0.75;
+      
+      // Generate a random token amount with 3 decimal places
+      const minTokens = Math.min(0.125, maxTokens / 2);
+      const tokenAmount = parseFloat((minTokens + Math.random() * (maxTokens - minTokens)).toFixed(3));
+      
+      // Names that sound like real investors
+      const bidders = [
+        'Alex S.', 'Morgan L.', 'Jamie W.', 'Taylor R.', 'Jordan B.',
+        'Casey P.', 'Robin M.', 'Quinn T.', 'Avery D.', 'Blake C.',
+        'Skyler F.', 'Riley H.', 'Dakota J.', 'Parker N.', 'Jordan V.'
+      ];
+      
+      // Create simulated bid
+      const simulatedBid = {
+        id: `sim-bid-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        price: bidAmount,
+        tokenAmount,
+        timestamp: new Date().toISOString(),
+        bidder: bidders[Math.floor(Math.random() * bidders.length)]
+      };
+      
+      // Add to recent activity UI
+      const newBid = {
+        user: simulatedBid.bidder,
+        action: 'placed a bid',
+        amount: `$${(bidAmount/1000).toFixed(1)}k`,
+        tokens: tokenAmount.toFixed(3),
+        time: 'just now'
+      };
+      
+      setRecentActivity(prev => [newBid, ...prev.slice(0, 4)]);
+      
+      // Update bid distribution data to include this new bid
+      setBidDistribution(prevDistribution => {
+        const updatedDistribution = [...prevDistribution];
+        // Find the appropriate price range and update it
+        // Convert bidAmount back to the full price scale for distribution
+        const fullScaleBidAmount = bidAmount;
+        for (const range of updatedDistribution) {
+          const [minPrice, maxPrice] = range.priceRange;
+          if (fullScaleBidAmount >= minPrice && fullScaleBidAmount < maxPrice) {
+            range.count += 1;
+            range.tokens += tokenAmount;
+            break;
+          }
+        }
+        
+        return updatedDistribution;
+      });
+      
+      // Calculate new clearing price based on all bids
+      const allBids = [...userBids, ...getSimulatedMarketBids(), simulatedBid];
+      const newClearingPrice = calculateClearingPrice(allBids);
+      
+      // Only update if the clearing price has changed
+      if (newClearingPrice !== clearingPrice) {
+        setClearingPrice(newClearingPrice);
+        setPropertyValue(newClearingPrice * 100);
+      }
+      
+      // Calculate bid impact percentage for UI
+      const priceChangePercent = ((newClearingPrice - clearingPrice) / clearingPrice) * 100;
+      const bidImpactMultiplier = 1 + (priceChangePercent / 100);
+      setRecentBidImpact(bidImpactMultiplier);
+    }, 5000);
+
+    return () => clearInterval(bidInterval);
+  }, [clearingPrice, recentActivity, userBids, userInteractedWithBidPanel]);
+
+
+
+  
+  // Start automatic bidding activity to drive the price from 120k to 150k
+  const startAutomaticBidding = () => {
+    // Names that sound like real investors
+    const bidders = [
+      'Alex S.', 'Morgan L.', 'Jamie W.', 'Taylor R.', 'Jordan B.',
+      'Casey P.', 'Robin M.', 'Quinn T.', 'Avery D.', 'Blake C.',
+      'Skyler F.', 'Riley H.', 'Dakota J.', 'Parker N.', 'Jordan V.'
+    ];
+    
+    // Create a sequence of bids that will drive the price up quickly at first
+    const createBid = (price, tokenAmount) => {
+      return {
+        id: `auto-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        price,
+        tokenAmount,
+        timestamp: new Date().toISOString(),
+        bidder: bidders[Math.floor(Math.random() * bidders.length)]
+      };
+    };
+    
+    // Function to replace lower bids with higher bids to drive up the clearing price
+    const placeBid = (price, tokenAmount) => {
+      // Create the new bid
+      const newBid = createBid(price, tokenAmount);
+      
+      // Add to all bids and replace some lower bids to ensure clearing price increases
+      setAllBids(prev => {
+        // Sort bids by price (lowest first)
+        const sortedBids = [...prev].sort((a, b) => a.price - b.price);
+        
+        // Remove some of the lowest bids to make room for higher bids
+        // This ensures the clearing price will increase
+        const lowestBidsToRemove = Math.min(3, Math.floor(sortedBids.length * 0.1)); // Remove 10% of lowest bids or at least 3
+        const remainingBids = sortedBids.slice(lowestBidsToRemove);
+        
+        // Add the new higher bid
+        const updatedBids = [...remainingBids, newBid];
+        
+        // Calculate new clearing price with updated bids
+        const newClearingPrice = calculateClearingPrice(updatedBids);
+        
+        // Update clearing price
+        setClearingPrice(newClearingPrice);
+        setPropertyValue(newClearingPrice * 100);
+        
+        console.log(`New bid at $${price.toLocaleString()}, new clearing price: $${newClearingPrice.toLocaleString()}`);
+        
+        return updatedBids;
+      });
+      
+      // Add to recent activity
+      const newActivity = {
+        type: 'bid',
+        user: newBid.bidder,
+        action: 'placed a bid',
+        amount: `$${(newBid.price / 1000).toFixed(1)}k`,
+        tokens: newBid.tokenAmount.toFixed(3),
+        time: 'just now'
+      };
+      
+      setRecentActivity(prev => [newActivity, ...prev.slice(0, 4)]);
+    };
+    
+    // Schedule a series of bids with decreasing intervals to create a sense of urgency
+    // Start with quick bids (every 1-2 seconds) then slow down
+    
+    // Initial set of rapid bids to quickly drive price up
+    const initialBids = [
+      { price: 122000, tokens: 1.5, delay: 1000 },
+      { price: 124500, tokens: 2.0, delay: 1500 },
+      { price: 127000, tokens: 1.8, delay: 2000 },
+      { price: 130000, tokens: 2.2, delay: 2500 },
+      { price: 133000, tokens: 1.5, delay: 3000 },
+      { price: 136000, tokens: 1.7, delay: 3500 },
+      { price: 139000, tokens: 2.0, delay: 4000 },
+      { price: 142000, tokens: 1.6, delay: 4500 },
+      { price: 145000, tokens: 1.8, delay: 5000 },
+      { price: 148000, tokens: 2.1, delay: 5500 },
+      { price: 150000, tokens: 1.9, delay: 6000 },
+    ];
+    
+    // Schedule the initial rapid bids
+    let cumulativeDelay = 0;
+    initialBids.forEach(bid => {
+      cumulativeDelay += bid.delay;
+      setTimeout(() => {
+        placeBid(bid.price, bid.tokens);
+      }, cumulativeDelay);
+    });
+    
+    // After the initial rapid bids, continue with occasional bids at longer intervals
+    setTimeout(() => {
+      // Set up an interval for occasional bids
+      const intervalId = setInterval(() => {
+        // Random price between 150k and 155k
+        const price = 150000 + Math.floor(Math.random() * 5000);
+        // Random token amount between 0.5 and 2.5
+        const tokenAmount = 0.5 + Math.random() * 2.0;
+        
+        placeBid(price, tokenAmount);
+        
+        // 70% chance to stop the interval after each bid once we reach target price
+        if (Math.random() > 0.3 && clearingPrice >= 150000) {
+          clearInterval(intervalId);
+        }
+      }, 10000); // Every 10 seconds
+      
+      // Safety cleanup after 2 minutes
+      setTimeout(() => {
+        clearInterval(intervalId);
+      }, 120000);
+    }, cumulativeDelay + 5000); // Start after initial bids plus 5 seconds
+  };
+  
+  // Generate simulated market bids to represent other participants in the auction
+  const getSimulatedMarketBids = () => {
+    // Names that sound like real investors
+    const bidders = [
+      'Alex S.', 'Morgan L.', 'Jamie W.', 'Taylor R.', 'Jordan B.',
+      'Casey P.', 'Robin M.', 'Quinn T.', 'Avery D.', 'Blake C.',
+      'Skyler F.', 'Riley H.', 'Dakota J.', 'Parker N.', 'Jordan V.'
+    ];
+    
+    // Generate simulated bids based on bid distribution
+    const simulatedBids = [];
+    
+    // For each price range in the distribution, create a number of bids
+    bidDistribution.forEach(range => {
+      const [minPrice, maxPrice] = range.priceRange;
+      const bidCount = range.count;
+      
+      for (let i = 0; i < bidCount; i++) {
+        // Random price within this range
+        const price = Math.min(200000, Math.floor(minPrice + Math.random() * (maxPrice - minPrice)));
+        
+        // Random token amount with 3 decimal places (0.125 to 2.5)
+        const tokenAmount = parseFloat((0.125 + Math.random() * 2.375).toFixed(3));
+        
+        // Create simulated bid
+        simulatedBids.push({
+          id: `sim-${minPrice}-${i}`,
+          price,
+          tokenAmount,
+          timestamp: new Date().toISOString(),
+          bidder: bidders[Math.floor(Math.random() * bidders.length)]
+        });
+      }
+    });
+    
+    return simulatedBids;
+  };
+  
+  // Calculate clearing price based on top 100 tokens worth of bids
+  const calculateClearingPrice = (allBids) => {
+    // Sort bids by price (highest first)
+    const sortedBids = [...allBids].sort((a, b) => b.price - a.price);
+    
+    let totalTokensFilled = 0;
+    let clearingPriceFound = false;
+    let newClearingPrice = 0;
+    
+    // Find the bid that fills the 100th token
+    for (const bid of sortedBids) {
+      // Add the token amount for this bid
+      const previousTotal = totalTokensFilled;
+      totalTokensFilled += bid.tokenAmount;
+      
+      // If this bid crosses the 100 token threshold, it's our clearing price
+      if (previousTotal < 100 && totalTokensFilled >= 100) {
+        newClearingPrice = bid.price;
+        clearingPriceFound = true;
+        break;
+      }
+    }
+    
+    // If we don't have enough bids to fill 100 tokens, use the lowest bid price
+    // or the starting price if no bids
+    if (!clearingPriceFound) {
+      newClearingPrice = sortedBids.length > 0 ? 
+        sortedBids[sortedBids.length - 1].price : startingPrice;
+    }
+    
+    // Cap the clearing price at 200k
+    newClearingPrice = Math.min(200000, newClearingPrice);
+    
+    console.log(`Clearing price calculated: $${newClearingPrice.toLocaleString()} based on ${totalTokensFilled} tokens`);
+    return newClearingPrice;
+  };
+  
+  // Effect to run once on component mount to generate initial bids
+  useEffect(() => {
+    // Generate enough initial bids to fill all 100 tokens
+    const initialBids = [];
+    let totalTokens = 0;
+    
+    console.log('Generating initial bids to fill all 100 tokens...');
+    
+    // First, calculate how many tokens are already in user bids
+    const userBidsTokens = userBids.reduce((sum, bid) => sum + bid.tokenAmount, 0);
+    totalTokens += userBidsTokens;
+    
+    // Safety counter to prevent infinite loops
+    let safetyCounter = 0;
+    const maxIterations = 1000;
+    
+    // Generate a set of initial bids until we reach 100 tokens
+    while (totalTokens < 100 && safetyCounter < maxIterations) {
+      safetyCounter++;
+      // Generate a random premium (1-5% above clearing price)
+      const premium = 1 + (Math.random() * 0.05);
+      // Generate price with more variation (keeping in thousands range)
+      const bidAmount = Math.min(200000, Math.round(clearingPrice * premium));
+      
+      // Generate a random token amount with 3 decimal places (0.125 to 2.5)
+      const maxTokenAmount = Math.min(2.5, 100 - totalTokens);
+      const tokenAmount = parseFloat((0.125 + Math.random() * (maxTokenAmount - 0.125)).toFixed(3));
+      
+      // Names that sound like real investors
+      const bidders = [
+        'Alex S.', 'Morgan L.', 'Jamie W.', 'Taylor R.', 'Jordan B.',
+        'Casey P.', 'Robin M.', 'Quinn T.', 'Avery D.', 'Blake C.',
+        'Skyler F.', 'Riley H.', 'Dakota J.', 'Parker N.', 'Jordan V.'
+      ];
+      
+      const bidder = bidders[Math.floor(Math.random() * bidders.length)];
+      
+      // Create a simulated bid
+      const simulatedBid = {
+        id: `init-bid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        price: bidAmount,
+        tokenAmount: tokenAmount,
+        timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+        bidder: bidder
+      };
+      
+      initialBids.push(simulatedBid);
+      
+      // Add to recent activity UI only for the most recent bids
+      if (initialBids.length <= 5) {
+        const newBid = {
+          user: bidder,
+          action: 'placed a bid',
+          amount: `$${(bidAmount/1000).toFixed(1)}k`,
+          tokens: tokenAmount,
+          time: Math.floor(Math.random() * 10) + 1 + ' minutes ago'
+        };
+        
+        // Add with a slight delay between each to make it look more natural
+        setTimeout(() => {
+          setRecentActivity(prev => [newBid, ...prev.slice(0, 4)]);
+        }, initialBids.length * 300); // Faster display of initial bids
+      }
+    }
+    
+    // Update bid distribution data to include these new bids
+    setBidDistribution(prevDistribution => {
+      const updatedDistribution = [...prevDistribution];
+      
+      // Update distribution counts based on initial bids
+      initialBids.forEach(bid => {
+        for (const range of updatedDistribution) {
+          const [minPrice, maxPrice] = range.priceRange;
+          // Check if the rounded price falls within this range
+          if (bid.price >= minPrice && bid.price < maxPrice) {
+            range.count += 1;
+            range.tokens += bid.tokenAmount;
+            break;
+          }
+        }
+      });
+      
+      return updatedDistribution;
+    });
+    
+    // Add them to all bids
+    setAllBids(prev => [...prev, ...initialBids]);
+    
+    // Set clearing price to 120k to start
+    setClearingPrice(120000);
+    
+    // Update property value (100 tokens)
+    setPropertyValue(120000 * 100);
+    
+    console.log(`Generated ${initialBids.length} initial bids to fill 100 tokens, starting clearing price: $120,000`);
+    
+    // Start automatic bidding activity immediately
+    startAutomaticBidding();
+  }, []); // Empty dependency array means this runs once on mount
+  
+  // Handle new bid submission or amendment
+  const handlePlaceBid = (price, tokenAmount, bidIdToUpdate = null) => {
+    // Generate a new bid ID if not updating an existing bid
+    const newBidId = bidIdToUpdate || `bid${Date.now()}`;
+    
+    // Create the new bid object
+    const newBid = {
+      id: newBidId,
+      price,
+      tokenAmount,
+      timestamp: new Date().toISOString()
+    };
+    
+    let updatedBids = [];
+    
+    if (bidIdToUpdate) {
+      // Update an existing bid
+      updatedBids = userBids.map(bid => 
+        bid.id === bidIdToUpdate ? newBid : bid
+      );
+      setUserBids(updatedBids);
+      
+      // Reset bidToAmend
+      setBidToAmend(null);
+    } else {
+      // Otherwise, add a new bid
+      updatedBids = [...userBids, newBid];
+      setUserBids(updatedBids);
+    }
+    
+    // Add to recent activity
+    const newActivity = {
+      user: 'You',
+      action: bidIdToUpdate ? 'amended a bid' : 'placed a bid',
+      amount: `$${(price/1000).toFixed(1)}k`,
+      tokens: tokenAmount.toFixed(3),
+      time: 'just now'
+    };
+    
+    setRecentActivity(prev => [newActivity, ...prev.slice(0, 4)]);
+    
+    // Update bid distribution data to include this new bid
+    setBidDistribution(prevDistribution => {
+      const updatedDistribution = [...prevDistribution];
+      
+      // If this is an amendment, first remove the old bid from the distribution
+      if (bidIdToUpdate) {
+        const oldBid = userBids.find(bid => bid.id === bidIdToUpdate);
+        if (oldBid) {
+          // Round up the old bid price to the nearest $1,000 to find the correct bucket
+          const oldBidRounded = Math.ceil(oldBid.price / 1000) * 1000;
+          
+          // Find and update the range that contained the old bid
+          for (const range of updatedDistribution) {
+            const [minPrice, maxPrice] = range.priceRange;
+            // Check if the rounded price falls within this range
+            if (oldBidRounded >= minPrice && oldBidRounded < maxPrice) {
+              range.count = Math.max(0, range.count - 1); // Ensure count doesn't go below 0
+              range.tokens = Math.max(0, range.tokens - oldBid.tokenAmount); // Ensure tokens don't go below 0
+              break;
+            }
+          }
+        }
+      }
+      
+      // Round up the new bid price to the nearest $1,000
+      const priceRounded = Math.ceil(price / 1000) * 1000;
+      
+      // Now add the new bid to the distribution
+      for (const range of updatedDistribution) {
+        const [minPrice, maxPrice] = range.priceRange;
+        // Check if the rounded price falls within this range
+        if (priceRounded >= minPrice && priceRounded < maxPrice) {
+          range.count += 1;
+          range.tokens += tokenAmount;
+          break;
+        }
+      }
+      
+      return updatedDistribution;
+    });
+    
+    // Calculate new clearing price based on all bids
+    // Combine user bids with simulated market bids
+    const allBids = [...updatedBids, ...getSimulatedMarketBids()];
+    const newClearingPrice = calculateClearingPrice(allBids);
+    
+    console.log(`New clearing price calculated: $${newClearingPrice.toLocaleString()} after user placed bid of $${price.toLocaleString()} for ${tokenAmount} tokens`);
+    
+    // Only update if the clearing price has changed
+    if (newClearingPrice !== clearingPrice) {
+      setClearingPrice(newClearingPrice);
+      
+      // Update property value
+      setPropertyValue(newClearingPrice * 100);
+    }
+    
+    // Mark that the user has interacted with the bid panel
+    setUserInteractedWithBidPanel(true);
+    console.log('User placed/amended bid, marking as interacted with bid panel');
+  };
+  
+  // Handle amending a bid
+  const handleAmendBid = (bid) => {
+    try {
+      // Create a defensive copy of the bid to avoid reference issues
+      const bidCopy = { ...bid };
+      
+      // Update state with the copied bid
+      setBidToAmend(bidCopy);
+      
+      // Store the original bid details for later comparison when the bid is actually amended
+      setBidBeingAmended(bidCopy);
+      
+      // Reset the user interaction flag so bid price can follow clearing price initially
+      // but only when first clicking the Increase Bid button
+      setUserInteractedWithBidPanel(false);
+      console.log('Amend/Increase bid clicked, resetting userInteractedWithBidPanel to false');
+      
+      // Use a timeout to ensure state update completes before scrolling
+      setTimeout(() => {
+        try {
+          // Scroll to the bid panel to make it clear to the user what's happening
+          const bidPanelElement = document.getElementById('bid-panel');
+          if (bidPanelElement) {
+            bidPanelElement.scrollIntoView({ behavior: 'smooth' });
+            
+            // Add event listeners to the bid panel to detect user interaction
+            // This ensures that once the user interacts with any input, the bid price stays fixed
+            const inputs = bidPanelElement.querySelectorAll('input');
+            const buttons = bidPanelElement.querySelectorAll('button:not([type="submit"])');
+            
+            // Function to handle any interaction with the bid panel
+            const handleInteraction = () => {
+              setUserInteractedWithBidPanel(true);
+              console.log('User interacted with bid panel after clicking Increase Bid');
+              
+              // Remove event listeners once interaction is detected
+              inputs.forEach(input => input.removeEventListener('focus', handleInteraction));
+              buttons.forEach(button => button.removeEventListener('click', handleInteraction));
+            };
+            
+            // Add event listeners to all inputs and buttons in the bid panel
+            inputs.forEach(input => input.addEventListener('focus', handleInteraction));
+            buttons.forEach(button => button.addEventListener('click', handleInteraction));
+          }
+          
+          // Log success for debugging
+          console.log('Successfully set bid to amend:', bidCopy);
+        } catch (scrollError) {
+          console.error('Error scrolling to bid panel:', scrollError);
+        }
+      }, 0);
+    } catch (error) {
+      console.error('Error in handleAmendBid:', error);
+      // Prevent the screen from going blank by handling errors
+      alert('There was an error processing your request. Please try again.');
+    }
+  };
+  
+  // Handle canceling bid amendment
+  const handleCancelAmend = (event) => {
+    try {
+      // If event exists, prevent default behavior
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      
+      // Reset the bidToAmend state to null
+      setBidToAmend(null);
+      console.log('Successfully cancelled amendment');
+    } catch (error) {
+      console.error('Error in handleCancelAmend:', error);
+      // Prevent the screen from going blank by handling errors
+    }
+  };
+  
+  return (
+    <PageContainer>
+      <BackLink to="/ipo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+        Back to IPO Listings
+      </BackLink>
+      
+      <PropertyHeader>
+        <PropertyImage>
+          <img src={property.imageUrl} alt={property.name} />
+        </PropertyImage>
+        <PropertyInfo>
+          <PropertyName>{property.name}</PropertyName>
+          <PropertyLocation>{property.location}</PropertyLocation>
+          <PropertyStats>
+            <StatItem>
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              </svg>
+              {property.bedrooms} Beds
+            </StatItem>
+            <StatItem>
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 19h10v1c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2v-1zm0-1h10v-5H7v5zM17 3v6l-3.15-.66c-.01 0-.01.01-.02.02 1.55.62 2.72 1.98 3.07 3.64H7.1c.34-1.66 1.52-3.02 3.07-3.64-.01-.01-.02-.02-.02-.02L7 9V3h10zm-5 6c-.83 0-1.5-.67-1.5-1.5S11.17 6 12 6s1.5.67 1.5 1.5S12.83 9 12 9z"/>
+              </svg>
+              {property.bathrooms} Baths
+            </StatItem>
+            <StatItem>
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z"/>
+                <circle cx="7.5" cy="14.5" r="1.5"/>
+                <circle cx="16.5" cy="14.5" r="1.5"/>
+              </svg>
+              {property.carSpots} Cars
+            </StatItem>
+            <StatItem>{property.propertyType}</StatItem>
+          </PropertyStats>
+        </PropertyInfo>
+      </PropertyHeader>
+      
+      <ExplainerBox>
+        <h3>How This Dutch Auction Works - Simple Explanation</h3>
+        <p>
+          <span className="key-point">You always pay the clearing price, not your bid price.</span> Your bid just reserves your spot.
+        </p>
+        <p>
+          1. Place a bid at or above the current clearing price<br/>
+          2. If your bid stays above the clearing price, you're guaranteed tokens<br/>
+          3. The clearing price rises as more people bid<br/>
+          4. When the auction ends, everyone pays the same final clearing price
+        </p>
+      </ExplainerBox>
+      
+      <MainContent>
+        <LeftColumn>
+          <SectionTitle>Auction Status</SectionTitle>
+          <AuctionStatusPanel 
+            clearingPrice={clearingPrice}
+            startingPrice={startingPrice}
+            propertyValue={propertyValue}
+            timeRemaining={timeRemaining}
+            recentActivity={recentActivity}
+            userBids={userBids}
+            onAmendBid={handleAmendBid}
+            mobilePlaceBidButton={
+              <MobilePlaceBidButton onClick={() => {
+                bidPanelRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}>
+                Place Bid
+              </MobilePlaceBidButton>
+            }
+          />
+        </LeftColumn>
+        
+        {/* Bid Panel - will appear below auction status on mobile */}
+        <RightColumn ref={bidPanelRef}>
+          <SectionTitle>Place Your Bid</SectionTitle>
+          <BidPanel 
+            clearingPrice={clearingPrice}
+            userBids={userBids}
+            onPlaceBid={handlePlaceBid}
+            propertyValue={propertyValue}
+            totalTokens={property.totalTokens}
+            bidToAmend={bidToAmend}
+            onCancelAmend={handleCancelAmend}
+            userInteracted={userInteractedWithBidPanel}
+            setUserInteracted={setUserInteractedWithBidPanel}
+          />
+        </RightColumn>
+        
+        {/* Bid Distribution - will appear below bid panel on mobile */}
+        <LeftColumn>
+          <div className="bid-distribution-section">
+            <SectionTitle>Bid Distribution</SectionTitle>
+            <BidDistributionChart 
+              bidDistribution={bidDistribution}
+              clearingPrice={clearingPrice}
+              userBids={userBids}
+            />
+          </div>
+        </LeftColumn>  
+      </MainContent>
+    </PageContainer>
+  );
+};
+
+export default AuctionTest;
